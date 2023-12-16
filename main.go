@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/text"
@@ -67,6 +66,7 @@ func NewGame() *Game {
 			Width:            initialPaddleWidth,
 			MarginFromScreen: initialPaddleMarginFromScreen,
 			Color:            color.White,
+			acceleration:     8,
 			position: &RectPosition{
 				NorthLeft:  &Coordinate{X: initialPaddleMarginFromScreen, Y: screenHeight/2 - initialPaddleHeight/2},
 				NorthRight: &Coordinate{X: initialPaddleMarginFromScreen + initialPaddleWidth, Y: screenHeight/2 - initialPaddleHeight/2},
@@ -90,6 +90,7 @@ func NewGame() *Game {
 			Width:            initialPaddleWidth,
 			MarginFromScreen: initialPaddleMarginFromScreen,
 			Color:            color.White,
+			acceleration:     8,
 			position: &RectPosition{
 				NorthLeft:  &Coordinate{X: screenWidth - initialPaddleMarginFromScreen - initialPaddleWidth, Y: screenHeight/2 - initialPaddleHeight/2},
 				NorthRight: &Coordinate{X: screenWidth - initialPaddleMarginFromScreen, Y: screenHeight/2 - initialPaddleHeight/2},
@@ -164,6 +165,7 @@ type Paddle struct {
 	MarginFromScreen float32
 	Color            color.Color
 	position         *RectPosition
+	acceleration     float32
 }
 
 type Ball struct {
@@ -180,19 +182,19 @@ func (g *Game) Update() error {
 	ball := g.Ball
 
 	if ebiten.IsKeyPressed(playerOne.UpKey) && playerOne.Paddle.position.NorthLeft.Y > g.marginBetweenScreenAndArea {
-		playerOne.Paddle.position.NorthLeft.Y = playerOne.Paddle.position.NorthLeft.Y - 8
+		playerOne.Paddle.position.NorthLeft.Y = playerOne.Paddle.position.NorthLeft.Y - playerOne.Paddle.acceleration
 	}
 	if ebiten.IsKeyPressed(playerOne.DownKey) && playerOne.Paddle.position.NorthLeft.Y < g.screenHeight-g.marginBetweenScreenAndArea-playerOne.Paddle.Height {
-		playerOne.Paddle.position.NorthLeft.Y = playerOne.Paddle.position.NorthLeft.Y + 8
+		playerOne.Paddle.position.NorthLeft.Y = playerOne.Paddle.position.NorthLeft.Y + playerOne.Paddle.acceleration
 	}
 
 	if ebiten.IsKeyPressed(playerTwo.UpKey) && playerTwo.Paddle.position.NorthRight.Y > g.marginBetweenScreenAndArea {
-		playerTwo.Paddle.position.NorthRight.Y = playerTwo.Paddle.position.NorthRight.Y - 8
+		playerTwo.Paddle.position.NorthRight.Y = playerTwo.Paddle.position.NorthRight.Y - playerTwo.Paddle.acceleration
 	}
 	if ebiten.IsKeyPressed(playerTwo.DownKey) && playerTwo.Paddle.position.NorthRight.Y < g.screenHeight-g.marginBetweenScreenAndArea-playerTwo.Paddle.Height {
-		playerTwo.Paddle.position.NorthRight.Y = playerTwo.Paddle.position.NorthRight.Y + 8
+		playerTwo.Paddle.position.NorthRight.Y = playerTwo.Paddle.position.NorthRight.Y + playerTwo.Paddle.acceleration
 	}
-
+	// paddle positions rearrange
 	playerOne.Paddle.position.NorthRight.X = playerOne.Paddle.position.NorthLeft.X + playerOne.Paddle.Width
 	playerOne.Paddle.position.SouthRight.X = playerOne.Paddle.position.NorthLeft.X + playerOne.Paddle.Width
 	playerOne.Paddle.position.NorthRight.Y = playerOne.Paddle.position.NorthLeft.Y
@@ -211,35 +213,31 @@ func (g *Game) Update() error {
 
 		ball.Center.X = ball.Center.X - (ball.ballAccelerationX)
 		ball.Center.Y = ball.Center.Y - (ball.ballAccelerationY)
+		// up line || bottom line
 		if ball.Center.Y-ball.Radius <= g.marginBetweenScreenAndArea || ball.Center.Y+ball.Radius >= g.screenHeight-g.marginBetweenScreenAndArea {
-			// up line || // bottom line
 			ball.ballAccelerationY = ball.ballAccelerationY * -1
 		} else if abs(ball.Center.X-playerOne.Paddle.position.NorthRight.X) <= ball.Radius &&
-			// first player
 			abs(playerOne.Paddle.position.NorthRight.Y-ball.Radius) <= ball.Center.Y &&
 			ball.Center.Y <= abs(playerOne.Paddle.position.SouthRight.Y+ball.Radius) {
-
+			// first player
 			if ball.Center.Y < playerOne.Paddle.position.NorthRight.Y || ball.Center.Y > playerOne.Paddle.position.SouthRight.Y {
 				ball.ballAccelerationY = ball.ballAccelerationY * -1
 			}
 			ball.ballAccelerationX = ball.ballAccelerationX * -1
 		} else if abs(ball.Center.X-playerTwo.Paddle.position.NorthLeft.X) <= ball.Radius &&
-			// second player
 			abs(playerTwo.Paddle.position.NorthLeft.Y-ball.Radius) <= ball.Center.Y &&
 			ball.Center.Y <= abs(playerTwo.Paddle.position.SouthLeft.Y+ball.Radius) {
+			// second player
 			if ball.Center.Y < playerTwo.Paddle.position.NorthLeft.Y || ball.Center.Y > playerTwo.Paddle.position.SouthLeft.Y {
 				ball.ballAccelerationY = ball.ballAccelerationY * -1
 			}
 			ball.ballAccelerationX = ball.ballAccelerationX * -1
 		} /* else if ball.Center.X-ball.Radius <= g.marginBetweenScreenAndArea || ball.Center.X+ball.Radius >= g.screenWidth-g.marginBetweenScreenAndArea {
 			// left and right side
-			// bunu günün sonunda kaldırmam lazım
 			ball.ballAccelerationX = ball.ballAccelerationX * -1
 		}*/
-
 		if ball.Center.X-ball.Radius <= g.marginBetweenScreenAndArea {
 			playerTwo.Score.value++
-			fmt.Println("jayda")
 			g.reset()
 		} else if ball.Center.X+ball.Radius >= g.screenWidth-g.marginBetweenScreenAndArea {
 			playerOne.Score.value++
@@ -261,16 +259,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	vector.DrawFilledRect(screen, g.marginBetweenScreenAndArea, g.screenHeight-g.marginBetweenScreenAndArea, g.areaWidth, g.areaBorderWidth, g.areaBorderColor, false)
 	vector.DrawFilledRect(screen, g.marginBetweenScreenAndArea, g.marginBetweenScreenAndArea, g.areaBorderWidth, g.areaHeight, g.areaBorderColor, false)
 	vector.DrawFilledRect(screen, g.screenWidth-g.marginBetweenScreenAndArea, g.marginBetweenScreenAndArea, g.areaBorderWidth, g.areaHeight, g.areaBorderColor, false)
-	// first player
+
 	vector.DrawFilledRect(screen, g.PlayerOne.Paddle.position.NorthLeft.X, g.PlayerOne.Paddle.position.NorthLeft.Y, g.PlayerOne.Paddle.Width, g.PlayerOne.Paddle.Height, g.PlayerOne.Paddle.Color, false)
-	//second player
 	vector.DrawFilledRect(screen, g.PlayerTwo.Paddle.position.NorthLeft.X, g.PlayerTwo.Paddle.position.NorthLeft.Y, g.PlayerTwo.Paddle.Width, g.PlayerTwo.Paddle.Height, g.PlayerTwo.Paddle.Color, false)
-	//ball
 	vector.DrawFilledCircle(screen, g.Ball.Center.X, g.Ball.Center.Y, g.Ball.Radius, g.Ball.Color, false)
 
 	text.Draw(screen, strconv.Itoa(g.PlayerOne.Score.value), mplusNormalFont, int(g.PlayerOne.Score.position.X), int(g.PlayerOne.Score.position.Y), g.PlayerOne.Score.color)
 	text.Draw(screen, strconv.Itoa(g.PlayerTwo.Score.value), mplusNormalFont, int(g.PlayerTwo.Score.position.X), int(g.PlayerTwo.Score.position.Y), g.PlayerTwo.Score.color)
-
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
@@ -292,8 +287,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ebiten.SetWindowSize(int(1000), int(800))
-	ebiten.SetWindowTitle("Hello, World!")
+	ebiten.SetWindowSize(int(screenWidth), int(screenHeight))
+	ebiten.SetWindowTitle("Pong")
 	game := NewGame()
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)
