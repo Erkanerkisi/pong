@@ -286,7 +286,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	ebiten.SetWindowSize(int(screenWidth), int(screenHeight))
 	ebiten.SetWindowTitle("Pong")
 	game := NewGame()
